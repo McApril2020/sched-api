@@ -3,6 +3,11 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
+const users = require('./data/users');
+const faculty = require('./data/faculty');
+const faculty_sched = require('./data/faculty_sched');
+const students = require('./data/students');
+
 const app = express();
 const PORT = 5000;
 
@@ -13,37 +18,6 @@ app.use(cors({
     credentials: true,
 })) 
 app.use(bodyParser.json());
- 
-const users = [
-    { id: 1, username: 'admin', password: '123456', isFaculty: 1, isAdmin: 1 },
-    { id: 2, username: '2026001', password: '123456', isFaculty: 1, isAdmin: 1 },
-    { id: 3, username: '2026002', password: '123456', isFaculty: 0, isAdmin: 0 },
-    { id: 4, username: '2026003', password: '123456', isFaculty: 0, isAdmin: 0 },
-    { id: 5, username: '2026004', password: '123456', isFaculty: 0, isAdmin: 0 },
-    { id: 6, username: '2026005', password: '123456', isFaculty: 0, isAdmin: 0 },
-    { id: 7, username: '2026006', password: '123456', isFaculty: 0, isAdmin: 0 },
-];
-
-const faculty = [
-    {id: 1, FirstName: 'John', LastName: 'Smith', position: 'Professor',},
-    {id: 2, FirstName: 'Maria', LastName: 'Gonzalez', position: 'Lecturer',},
-    {id: 3, FirstName: 'David', LastName: 'Lee', position: 'Lecturer',},
-];
-
-const faculty_sched = [
-    {facultyID: 1, subject: 'Mathematics', sched: '2026-03-15', timeStart: '08:00', timeEnd: '09:00'},
-    {facultyID: 1, subject: 'Science', sched: '2026-03-15', timeStart: '09:00', timeEnd: '10:00'},
-    {facultyID: 1, subject: 'English', sched: '2026-03-15', timeStart: '10:00', timeEnd: '11:00'},
-    {facultyID: 2, subject: 'History', sched: '2026-03-15', timeStart: '08:00', timeEnd: '09:00'},
-    {facultyID: 2, subject: 'Physical Ed.', sched: '2026-03-15', timeStart: '09:00', timeEnd: '10:00'},
-    {facultyID: 2, subject: 'Computer Science', sched: '2026-03-15', timeStart: '10:00', timeEnd: '11:00'},
-    {facultyID: 3, subject: 'Art', sched: '2026-03-15', timeStart: '08:00', timeEnd: '09:00'},
-    {facultyID: 3, subject: 'Music', sched: '2026-03-15', timeStart: '09:00', timeEnd: '10:00'},
-];
-
-const students = [
-
-];
 
 // Login endpoint
 app.post('/login', (req, res) => {
@@ -64,7 +38,7 @@ app.get('/faculty/:id', (req, res) => {
     const facultyID = parseInt(req.params.id);
 
     // Find faculty info
-    const facultyInfo = faculty.find(f => f.id === facultyID);
+    const facultyInfo = faculty.find(f => f.id == facultyID);
 
     if (!facultyInfo) {
         return res.status(404).json({ message: 'Faculty not found' });
@@ -75,6 +49,21 @@ app.get('/faculty/:id', (req, res) => {
 
     return res.status(200).json({ faculty: facultyInfo, schedule });
 });
+
+// Student endpoint
+app.get('/student/:username', (req, res) => {
+  const studentNo = req.params.username;
+
+  const studentInfo = students.find(f => f.username == studentNo)
+
+  if (!studentInfo) {
+    return res.status(404).json({ message: 'Student not found' });
+  }
+
+  const stu = students.filter(s => s.username == studentNo);
+
+  return res.status(200).json({ student: studentInfo, stu });
+})
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
