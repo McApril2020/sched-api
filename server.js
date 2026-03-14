@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const moment = require("moment-timezone");
 require("dotenv").config();
 
 const users = require('./data/users');
@@ -48,7 +49,6 @@ function authenticateToken(req, res, next) {
 
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
-
   const user = users.find(u => u.username === username && u.password === password);
 
   if (!user) {
@@ -76,10 +76,10 @@ app.post('/faculty/:id/generate-qr', authenticateToken, (req, res) => {
   const facultyID = parseInt(req.params.id);
   const { subject, sched, timeStart, timeEnd } = req.body;
 
-  const now = new Date();
-  const classStart = new Date(`${sched}T${timeStart}`);
-  const classEnd = new Date(`${sched}T${timeEnd}`);
-
+  const now = moment().tz("Asia/Manila");
+  const classStart = moment.tz(`${sched} ${timeStart}`, "YYYY-MM-DD HH:mm", "Asia/Manila");
+  const classEnd = moment.tz(`${sched} ${timeEnd}`, "YYYY-MM-DD HH:mm", "Asia/Manila");
+ 
   if (now < classStart || now > classEnd) {
     return res.status(400).json({ message: "Class is not active." });
   }
@@ -95,7 +95,7 @@ app.post('/faculty/:id/generate-qr', authenticateToken, (req, res) => {
     room: req.body.room,
     courseCode: req.body.courseCode,
     description: req.body.description,
-    expiresAt: classEnd.getTime()
+    expiresAt: classEnd.valueOf()
   };
 
   return res.status(200).json({
@@ -141,7 +141,7 @@ app.get('/session/:sessionId', authenticateToken, (req, res) => {
   if (!session) return res.status(404).json({ message: "Session not found", type: 'notFound' });
 
   const now = new Date();
-  if (now.getTime() > session.expiresAt) {
+  if (now.valueOf() > session.expiresAt) {
     return res.status(400).json({ message: "Session has expired", type: 'expired' });
   }
 
