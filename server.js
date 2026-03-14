@@ -18,7 +18,7 @@ const jwt = require("jsonwebtoken");
 // Middleware
 
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://192.168.1.55:3000'],
+    origin: ['http://localhost:3000', 'http://192.168.1.56:3000', 'https://april-attendance-miniapp.netlify.app'],
     credentials: true,
 })) 
 app.use(bodyParser.json());
@@ -92,12 +92,15 @@ app.post('/faculty/:id/generate-qr', authenticateToken, (req, res) => {
     sched,
     timeStart,
     timeEnd,
+    room: req.body.room,
+    courseCode: req.body.courseCode,
+    description: req.body.description,
     expiresAt: classEnd.getTime()
   };
 
   return res.status(200).json({
     sessionId,
-    link: `http://192.168.1.55:3000/login/attendance/${sessionId}`
+    link: `https://april-attendance-miniapp.netlify.app/attendance/${sessionId}`
   });
 });
 
@@ -133,32 +136,63 @@ app.get('/session/:sessionId', authenticateToken, (req, res) => {
   const sessionId = req.params.sessionId;
   const session = activeSessions[sessionId];
 
-  if (!session) return res.status(404).json({ message: "Session not found" });
+  console.log(req.user)
 
-  // optionally check if session has expired
+  if (!session) return res.status(404).json({ message: "Session not found", type: 'notFound' });
+
   const now = new Date();
   if (now.getTime() > session.expiresAt) {
-    return res.status(400).json({ message: "Session has expired" });
+    return res.status(400).json({ message: "Session has expired", type: 'expired' });
   }
 
-  return res.status(200).json(session);
+  const studentInfo = students.find(s => s.username === req.user.username);
+
+  return res.status(200).json({
+    session,
+    student: studentInfo || null
+  });
 });
 
 app.post('/attendance/:sessionId', authenticateToken, (req, res) => {
-  const { studentUsername } = req.body;
+  const { studentUsername, sessionInfo } = req.body;
+  const sessionId = req.params.sessionId;
+  const session = activeSessions[sessionId];
+ 
+  const student = students.find(s => s.username === studentUsername);
+   
+  if (
+    student.subject != sessionInfo.subject ||
+    student.sched !== sessionInfo.sched ||
+    student.timeStart !== sessionInfo.timeStart ||
+    student.timeEnd !== sessionInfo.timeEnd
+  ) {
+    return res.status(400).json({ message: "Session does not match student's schedule" });
+  }
+
+  if (!session) return res.status(404).json({ message: "Session not found" });
+  if (!session.attendance) session.attendance = [];
+  if (session.attendance.includes(studentUsername)) {
+    return res.status(400).json({ message: "Attendance Already Submitted!" });
+  }
+ 
+  session.attendance.push(studentUsername);
+  console.log(session.attendance);
+  return res.status(200).json({ message: "Attendance marked" });
+});
+
+app.get('/session/:sessionId/attendance', authenticateToken, (req, res) => {
   const sessionId = req.params.sessionId;
   const session = activeSessions[sessionId];
 
   if (!session) return res.status(404).json({ message: "Session not found" });
 
-  // simple attendance tracking
   if (!session.attendance) session.attendance = [];
-  if (session.attendance.includes(studentUsername)) {
-    return res.status(400).json({ message: "Already marked" });
-  }
 
-  session.attendance.push(studentUsername);
-  return res.status(200).json({ message: "Attendance marked" });
+  const attendanceDetails = session.attendance.map(username => {
+    return students.find(s => s.username === username);
+  }).filter(Boolean); 
+
+  return res.status(200).json({ attendance: attendanceDetails });
 });
 
 
